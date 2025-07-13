@@ -1,9 +1,12 @@
-// AI Service for professional audio processing with real API integration
+// AI Service for professional audio processing with Railway backend integration
 export class AIRemixService {
   private static instance: AIRemixService;
   private audioContext: AudioContext | null = null;
   
-  // API Keys
+  // Backend API URL (akan diupdate setelah deploy ke Railway)
+  private readonly BACKEND_URL = process.env.VITE_BACKEND_URL || 'https://ai-music-web-backend.railway.app';
+  
+  // Fallback API Keys (untuk development)
   private readonly SUNO_API_KEY = 'sksonauto_Af950HjWjAqgYdswQYXLGoUUwVQp_vjOOiAGuSS2ewzgG_2v';
   private readonly AUDIO_API_KEY = 'fb8231ecce1a672bff1fad69509aa1e4';
 
@@ -32,104 +35,47 @@ export class AIRemixService {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      console.log('🎵 Starting music remix with real API...');
+      console.log('🎵 Starting music remix with Railway backend...');
       
       if (onProgress) onProgress(10);
       
-      // Convert audio file to base64
-      const base64Audio = await this.fileToBase64(audioFile);
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('audio', audioFile);
+      formData.append('prompt', prompt);
+      formData.append('bpm', settings.bpm.toString());
+      formData.append('genre', settings.genre);
+      formData.append('style', settings.style);
+      
       if (onProgress) onProgress(30);
       
-      // Call Suno API for music remix
-      const remixResponse = await this.callSunoRemixAPI(base64Audio, prompt, settings);
-      if (onProgress) onProgress(70);
-      
-      // Process the response
-      const audioUrl = await this.processSunoResponse(remixResponse);
-      if (onProgress) onProgress(100);
-      
-      return audioUrl;
-      
-    } catch (error) {
-      console.error('Error in processRemix:', error);
-      // Fallback to demo mode if API fails
-      return this.generateRemixedAudio(audioFile, prompt, settings);
-    }
-  }
-
-  private async fileToBase64(file: File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const result = reader.result as string;
-        // Remove data URL prefix
-        const base64 = result.split(',')[1];
-        resolve(base64);
-      };
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  private async callSunoRemixAPI(
-    base64Audio: string, 
-    prompt: string, 
-    settings: { bpm: number; genre: string; style: string }
-  ): Promise<any> {
-    try {
-      const response = await fetch('https://api.suno.ai/v1/remix', {
+      // Call Railway backend API
+      const response = await fetch(`${this.BACKEND_URL}/api/music-remix`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.SUNO_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          audio_data: base64Audio,
-          prompt: prompt,
-          bpm: settings.bpm,
-          genre: settings.genre,
-          style: settings.style,
-          duration: 30, // 30 seconds remix
-          quality: 'high'
-        })
+        body: formData
       });
 
       if (!response.ok) {
-        throw new Error(`Suno API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json();
-    } catch (error) {
-      console.error('Suno API call failed:', error);
-      throw error;
-    }
-  }
-
-  private async processSunoResponse(response: any): Promise<string> {
-    try {
-      if (response.audio_url) {
-        return response.audio_url;
-      } else if (response.audio_data) {
-        // Convert base64 audio data to blob URL
-        const audioBlob = this.base64ToBlob(response.audio_data, 'audio/mpeg');
-        return URL.createObjectURL(audioBlob);
-      } else {
-        throw new Error('No audio data in response');
+      if (onProgress) onProgress(70);
+      
+      const result = await response.json();
+      
+      if (onProgress) onProgress(100);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Backend processing failed');
       }
+      
+      return result.audioUrl;
+      
     } catch (error) {
-      console.error('Error processing Suno response:', error);
-      throw error;
+      console.error('Error in processRemix:', error);
+      // Fallback to demo mode if backend fails
+      return this.generateRemixedAudio(audioFile, prompt, settings);
     }
-  }
-
-  private base64ToBlob(base64: string, mimeType: string): Blob {
-    const byteCharacters = atob(base64);
-    const byteNumbers = new Array(byteCharacters.length);
-    for (let i = 0; i < byteCharacters.length; i++) {
-      byteNumbers[i] = byteCharacters.charCodeAt(i);
-    }
-    const byteArray = new Uint8Array(byteNumbers);
-    return new Blob([byteArray], { type: mimeType });
   }
 
   async textToMusic(
@@ -143,40 +89,16 @@ export class AIRemixService {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      console.log('🎵 Starting text-to-music generation with real API...');
+      console.log('🎵 Starting text-to-music generation with Railway backend...');
       console.log('🎵 Settings:', settings);
       console.log('🎵 Prompt:', prompt);
       
       if (onProgress) onProgress(10);
       
-      // Call Suno API for text-to-music generation
-      const musicResponse = await this.callSunoTextToMusicAPI(prompt, settings);
-      if (onProgress) onProgress(50);
-      
-      // Process the response
-      const audioUrl = await this.processSunoResponse(musicResponse);
-      if (onProgress) onProgress(100);
-      
-      console.log('🎵 AUDIO GENERATION SUCCESSFUL:', audioUrl);
-      return audioUrl;
-      
-    } catch (error) {
-      console.error('❌ Text-to-music generation error:', error);
-      
-      // Fallback to demo mode if API fails
-      return this.generateTextToMusicAudio(prompt, settings);
-    }
-  }
-
-  private async callSunoTextToMusicAPI(
-    prompt: string,
-    settings: { duration: number; genre: string; mood: string; aiModel?: string }
-  ): Promise<any> {
-    try {
-      const response = await fetch('https://api.suno.ai/v1/generate', {
+      // Call Railway backend API
+      const response = await fetch(`${this.BACKEND_URL}/api/text-to-music`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${this.SUNO_API_KEY}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
@@ -184,20 +106,32 @@ export class AIRemixService {
           duration: settings.duration,
           genre: settings.genre,
           mood: settings.mood,
-          model: settings.aiModel || 'musicgen-pro',
-          include_vocals: true, // Generate EDM with vocals
-          quality: 'high'
+          aiModel: settings.aiModel || 'musicgen-pro'
         })
       });
 
       if (!response.ok) {
-        throw new Error(`Suno API error: ${response.status} ${response.statusText}`);
+        throw new Error(`Backend API error: ${response.status} ${response.statusText}`);
       }
 
-      return await response.json();
+      if (onProgress) onProgress(50);
+      
+      const result = await response.json();
+      
+      if (onProgress) onProgress(100);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Backend processing failed');
+      }
+      
+      console.log('🎵 AUDIO GENERATION SUCCESSFUL:', result.audioUrl);
+      return result.audioUrl;
+      
     } catch (error) {
-      console.error('Suno text-to-music API call failed:', error);
-      throw error;
+      console.error('❌ Text-to-music generation error:', error);
+      
+      // Fallback to demo mode if backend fails
+      return this.generateTextToMusicAudio(prompt, settings);
     }
   }
 
@@ -208,18 +142,15 @@ export class AIRemixService {
     settings: any
   ): Promise<string> {
     try {
-      console.log('🎵 Using alternative audio API...');
+      console.log('🎵 Using alternative audio API via Railway backend...');
       
       const formData = new FormData();
       formData.append('audio', audioFile);
       formData.append('prompt', prompt);
       formData.append('settings', JSON.stringify(settings));
       
-      const response = await fetch('https://api.audio.ai/v1/process', {
+      const response = await fetch(`${this.BACKEND_URL}/api/process-audio`, {
         method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.AUDIO_API_KEY}`,
-        },
         body: formData
       });
 
@@ -228,7 +159,7 @@ export class AIRemixService {
       }
 
       const result = await response.json();
-      return result.audio_url || result.download_url;
+      return result.audioUrl || result.download_url;
       
     } catch (error) {
       console.error('Alternative API call failed:', error);
