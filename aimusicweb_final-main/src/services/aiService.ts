@@ -1,10 +1,10 @@
-// AI Service for professional audio processing with Railway backend integration
+// AI Service for professional audio processing with Render backend integration
 export class AIRemixService {
   private static instance: AIRemixService;
   private audioContext: AudioContext | null = null;
   
-  // Backend API URL (akan diupdate setelah deploy ke Railway)
-  private readonly BACKEND_URL = process.env.VITE_BACKEND_URL || 'https://ai-music-web-backend.railway.app';
+  // Backend API URL (akan diupdate setelah deploy ke Cyclic)
+  private readonly BACKEND_URL = 'https://ai-music-web-backend.cyclic.app';
   
   // Fallback API Keys (untuk development)
   private readonly SUNO_API_KEY = 'sksonauto_Af950HjWjAqgYdswQYXLGoUUwVQp_vjOOiAGuSS2ewzgG_2v';
@@ -35,7 +35,7 @@ export class AIRemixService {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      console.log('🎵 Starting music remix with Railway backend...');
+      console.log('🎵 Starting music remix with Render backend...');
       
       if (onProgress) onProgress(10);
       
@@ -49,7 +49,7 @@ export class AIRemixService {
       
       if (onProgress) onProgress(30);
       
-      // Call Railway backend API
+      // Call Render backend API
       const response = await fetch(`${this.BACKEND_URL}/api/music-remix`, {
         method: 'POST',
         body: formData
@@ -89,13 +89,13 @@ export class AIRemixService {
     onProgress?: (progress: number) => void
   ): Promise<string> {
     try {
-      console.log('🎵 Starting text-to-music generation with Railway backend...');
+      console.log('🎵 Starting text-to-music generation with Render backend...');
       console.log('🎵 Settings:', settings);
       console.log('🎵 Prompt:', prompt);
       
       if (onProgress) onProgress(10);
       
-      // Call Railway backend API
+      // Call Render backend API
       const response = await fetch(`${this.BACKEND_URL}/api/text-to-music`, {
         method: 'POST',
         headers: {
@@ -142,7 +142,7 @@ export class AIRemixService {
     settings: any
   ): Promise<string> {
     try {
-      console.log('🎵 Using alternative audio API via Railway backend...');
+      console.log('🎵 Using alternative audio API via Render backend...');
       
       const formData = new FormData();
       formData.append('audio', audioFile);

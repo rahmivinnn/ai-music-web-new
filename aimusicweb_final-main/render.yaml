@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: ai-music-web-backend
+    env: node
+    plan: free
+    buildCommand: cd backend && npm install
+    startCommand: cd backend && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: SUNO_API_KEY
+        value: sksonauto_Af950HjWjAqgYdswQYXLGoUUwVQp_vjOOiAGuSS2ewzgG_2v
+      - key: AUDIO_API_KEY
+        value: fb8231ecce1a672bff1fad69509aa1e4
+    healthCheckPath: /api/health
+    autoDeploy: true 
